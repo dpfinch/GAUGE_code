@@ -26,7 +26,7 @@ def regrid_4x5(infile = 0):
     orig_area = grid_area.area(orig_lat,orig_lon)
 
     grid_flux = orig_flux * orig_area
-
+    old_total = np.sum(grid_flux)
     # Can't use the GEOS-Chem normal grid because its not regular for a reason
     # only known to the Gods.
     new_lat = grid_area.get_model_lat('4x5')
@@ -57,6 +57,9 @@ def regrid_4x5(infile = 0):
 
 
     outgrid_flux = out_flux / new_area
+    new_total = np.sum(out_flux)
+    print "Old total flux = ", old_total
+    print "New total flux = ", new_total
 
     return outgrid_flux
 
@@ -170,8 +173,8 @@ def write_to_netcdf(flux,flux_name, res = '4x5'):
 
 if __name__ == '__main__':
 
-    new_flux = regrid_025x03125('total')
-    write_to_netcdf(new_flux, 'TOTAL', res = '0.25x0.3125')
+    new_flux = regrid_4x5('total')
+    write_to_netcdf(new_flux, 'TOTAL', res = '4x5')
 ## =============================================================================
 ## END OF PROGRAM
 ## =============================================================================
