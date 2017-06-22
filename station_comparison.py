@@ -19,7 +19,7 @@ import os.path
 def NOAA_flask_data(station):
     if station.lower() == 'macehead':
         station = 'MHD'
-    elif station.lower() == 'tacolnestion':
+    elif station.lower() == 'tacolneston':
         station = 'TAC'
 
     if station != 'TAC' and station != 'MHD':
