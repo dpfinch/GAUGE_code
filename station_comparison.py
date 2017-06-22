@@ -56,6 +56,44 @@ def NOAA_flask_data(station):
 
     return sample_dates, ch4_value
 
+def GC_station_data(station):
+    if station.lower() == 'mhd':
+        station = 'macehead'
+    elif station.lower() == 'tac':
+        station = 'tacolneston'
+
+    if station != 'macehead' and station != 'tacolneston':
+        print "No data for %s" % station
+        sys.exit()
+
+    dirc = '/home/dfinch/Documents/CH4/GC_station_data/'
+
+    fi = '%s%s_CH4_GEOS-Chem%s.csv' % (dirc, station, '025x03125')
+
+    if os.path.isfile(fi):
+        print "Opening file: %s" % fi
+    else:
+        print "No file named: %s" % fi
+        sys.exit()
+
+    raw_data = np.loadtxt(fi, delimiter = ',')
+
+    dates = []
+    ch4_value = []
+
+    for x in range(raw_data.shape[0]):
+        year = int(all_raw_data[x,0])
+        month = int(all_raw_data[x,1])
+        day = int(all_raw_data[x,2])
+        hour = int(all_raw_data[x,3])
+        minute = int(all_raw_data[x,4])
+        dates.append(datetime(year,month,day,hour,minute))
+
+        ch4_value.append(float(all_raw_data[x,5]))
+
+    return dates, ch4_value
+
+
 def simple_plot(dates,data):
 
     pass
