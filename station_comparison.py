@@ -11,6 +11,7 @@ import datetime as dt
 from matplotlib import pyplot as plt
 from mpl_toolkits.basemap import Basemap
 import geos_info
+import grid_area
 import brewer2mpl
 import sys
 import os.path
@@ -106,6 +107,42 @@ def GC_station_data(station):
 
     return dates, ch4_value
 
+def GC_4x5_data(station = 'MHD'):
+    import gchem
+    dirc = '/home/dfinch/Documents/CH4/model_output/4x5/'
+    fname = '%sctm_4x5.bpch' % dirc
+
+    gr = gchem.bpch.open_file(fname)
+    ch4 = gr.filter(category = 'IJ-AVG-$')
+
+    if station == 'MHD':
+        longitude = -9.899
+        latitude = 53.326
+    if station == 'TAC':
+        longitude = 1.139
+        latitude = 52.518
+    else:
+        print "Station %s not known." % station
+        sys.exit()
+
+    model_lat = grid_area.get_model_lat(model_res='4x5')
+    model_lon = grid_area.get_model_lon(model_res='4x5')
+
+    station_lon=min(range(len(model_lon)), key=lambda i: abs(model_lon[i]-latitude))
+    station_lat=min(range(len(model_lat)), key=lambda i: abs(model_lat[i]-longitude))
+
+    # Start empty array to append dates and ch4 conc
+
+    for m in range(len(ch4)):
+        monthly_ch4 = ch4[m].value[station_lon,station_lat,0]
+        monthly_date = ch4[m].times[0]
+
+    # Sort the data into chronological order
+    ch4_station = [y for y, x in sorted(zip(monthly_date, monthly_ch4))]
+    monthly_date.sort()
+
+    return monthly_date, ch4_station
+    
 
 def simple_plot(station = 'MHD'):
     noaa_dates, noaa_ch4 = NOAA_flask_data(station, meas_type = 'DISCRETE')
@@ -124,7 +161,7 @@ def simple_plot(station = 'MHD'):
 
 def measurement_compare(station = 'MHD'):
     monthly_dates, monthly_ch4 = NOAA_flask_data(station, meas_type = 'MONTHLY')
-    
+
     discrete_dates, discrete_ch4 = NOAA_flask_data(station, meas_type = 'DISCRETE')
 
     plt.plot(discrete_dates, discrete_ch4, color='grey', label = 'Discrete Observations')
