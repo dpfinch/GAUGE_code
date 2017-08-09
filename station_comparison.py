@@ -22,8 +22,12 @@ def NOAA_flask_data(station, meas_type='MONTHLY'):
         station = 'MHD'
     elif station.lower() == 'tacolneston':
         station = 'TAC'
+    elif station.lower() == 'maunaloa':
+        station = 'MLO'
 
-    if station != 'TAC' and station != 'MHD':
+    avail_stations = ['TAC','MHD','MLO']
+    
+    if station not in avail_stations:
         print "No data for %s" % station
         sys.exit()
 
@@ -118,9 +122,12 @@ def GC_4x5_data(station = 'MHD'):
     if station == 'MHD':
         longitude = -9.899
         latitude = 53.326
-    if station == 'TAC':
+    elif station == 'TAC':
         longitude = 1.139
         latitude = 52.518
+    elif station == 'MLO':
+        longitude = -155.576
+        latitude = 19.536
     else:
         print "Station %s not known." % station
         sys.exit()
@@ -128,21 +135,32 @@ def GC_4x5_data(station = 'MHD'):
     model_lat = grid_area.get_model_lat(model_res='4x5')
     model_lon = grid_area.get_model_lon(model_res='4x5')
 
-    station_lon=min(range(len(model_lon)), key=lambda i: abs(model_lon[i]-latitude))
-    station_lat=min(range(len(model_lat)), key=lambda i: abs(model_lat[i]-longitude))
+    station_lon=min(range(len(model_lon)), key=lambda i: abs(model_lon[i]-longitude))
+    station_lat=min(range(len(model_lat)), key=lambda i: abs(model_lat[i]-latitude))
 
     # Start empty array to append dates and ch4 conc
-
+    monthly_date = []
+    monthly_ch4 = []
+    
     for m in range(len(ch4)):
-        monthly_ch4 = ch4[m].value[station_lon,station_lat,0]
-        monthly_date = ch4[m].times[0]
+        temp = np.mean(ch4[m].value[:,:,0:5],axis=2)
+        rotated = np.rot90(temp,3)
+        flipped = np.fliplr(rotated)
+##        if station == 'MLO':
+##            monthly_ch4.append(np.mean(new_array[station_lat,station_lon,18])*1e9)
+##        else:
+        print temp[station_lon,station_lat]*1e9, flipped[station_lat,station_lon]*1e9
+        monthly_ch4.append(flipped[station_lat,station_lon]*1e9)
+##      monthly_ch4.append(np.mean(temp[station_lon,station_lat,0:5])*1e9)
+        monthly_date.append(ch4[m].times[0])
 
     # Sort the data into chronological order
-    ch4_station = [y for y, x in sorted(zip(monthly_date, monthly_ch4))]
+    ch4_station = [x for y, x in sorted(zip(monthly_date, monthly_ch4))]
     monthly_date.sort()
+    
 
     return monthly_date, ch4_station
-    
+
 
 def simple_plot(station = 'MHD'):
     noaa_dates, noaa_ch4 = NOAA_flask_data(station, meas_type = 'DISCRETE')
@@ -173,9 +191,69 @@ def measurement_compare(station = 'MHD'):
     plt.show()
     pass
 
+def course_grid_compare(station = 'MHD'):
+    gc_dates, gc_ch4 = GC_4x5_data(station)
+    obvs_dates, obvs_ch4 =  NOAA_flask_data(station , meas_type = 'MONTHLY')
+
+    plt.plot(gc_dates, gc_ch4, color='grey', label = 'GEOS-Chem')
+    plt.plot(obvs_dates[-36:], obvs_ch4[-36:], color='blue', label = 'Observations at ' + station)
+
+    plt.xlabel('Date')
+    plt.ylabel('CH$_4$ (ppb)')
+    plt.legend()
+    plt.show()
+
+    pass
+
+def mean_region_plot():
+    import gchem
+    dirc = '/home/dfinch/Documents/CH4/model_output/4x5/'
+    fname = '%sctm_4x5.bpch' % dirc
+
+    gr = gchem.bpch.open_file(fname)
+    ch4 = gr.filter(category = 'IJ-AVG-$')
+
+    dates = []
+    polar_mean = []
+    trop_mean = []
+    south_mean = []
+ 
+    model_lat = grid_area.get_model_lat(model_res='4x5')
+
+    high_lat= min(range(len(model_lat)), key=lambda i: abs(model_lat[i]-40))   
+    trop_lat_n = min(range(len(model_lat)), key=lambda i: abs(model_lat[i]-20))
+    trop_lat_s = min(range(len(model_lat)), key=lambda i: abs(model_lat[i]- -20))
+    south_lat = min(range(len(model_lat)), key=lambda i: abs(model_lat[i]- -40))
+
+    print high_lat, trop_lat_n, trop_lat_s, south_lat
+    
+    for m in range(len(ch4)):
+        temp = np.mean(ch4[m].value[:,:,0:5],axis=2)
+        rotated = np.rot90(temp,3)
+        flipped = np.fliplr(rotated)
+        dates.append(ch4[m].times[0])
+        polar_mean.append(np.mean(flipped[high_lat:, :])*1e9)
+        trop_mean.append(np.mean(flipped[trop_lat_s:trop_lat_n, :])*1e9)
+        south_mean.append(np.mean(flipped[:south_lat, :])*1e9)
+    # Sort the data into chronological order
+    high_lat_ch4 = [x for y, x in sorted(zip(dates, polar_mean))]
+    trop_lat_ch4 = [x for y, x in sorted(zip(dates, trop_mean))]
+    south_lat_ch4 = [x for y, x in sorted(zip(dates, south_mean))]
+    dates.sort()
+
+    plt.plot(dates,high_lat_ch4, color='grey', label = '> 40N (North Latitude)')
+    plt.plot(dates,trop_lat_ch4, color='blue', label = '20N - 20S (Tropical)')
+    plt.plot(dates,south_lat_ch4, color='green', label = '> 40S (South Latitudes)')
+    plt.xlabel('Date')
+    plt.ylabel('CH$_4$ (ppb)')
+    plt.legend()
+    plt.show()
+
 if __name__ == '__main__':
     # simple_plot()
-    measurement_compare()
+    # measurement_compare()
+    # course_grid_compare(station = 'MHD')
+    mean_region_plot()
 
 ## =============================================================================
 ## END OF PROGRAM
